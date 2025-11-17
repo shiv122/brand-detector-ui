@@ -152,6 +152,7 @@ export function useVideoDetection() {
       downloadProgress: null,
       isVideoCreating: false,
       isVideoProcessing: false,
+      realtimeCsvFiles: {},
     });
 
     abortControllerRef.current = new AbortController();
