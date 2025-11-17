@@ -26,10 +26,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  ComposedChart,
 } from "recharts";
 
 const COLORS = [
@@ -135,14 +131,6 @@ export function ChartCards() {
     return data.top_assets.slice(0, 6);
   }, [data]);
 
-  // Detection types data (video vs image)
-  const detectionTypesData = useMemo(() => {
-    if (!data?.detection_types) return [];
-    return [
-      { name: "Video", value: data.detection_types.video },
-      { name: "Image", value: data.detection_types.image },
-    ];
-  }, [data]);
 
   // Sessions over time (last 7 days from recent activity)
   const sessionsOverTime = useMemo(() => {
@@ -204,17 +192,6 @@ export function ChartCards() {
     }
     return config;
   }, [assetsPerBrandData]);
-
-  const pieChartConfig: ChartConfig = {
-    Video: {
-      label: "Video",
-      color: "#3B82F6",
-    },
-    Image: {
-      label: "Image",
-      color: "#10B981",
-    },
-  };
 
   const topAssetsChartConfig: ChartConfig = useMemo(() => {
     const config: ChartConfig = {};
@@ -309,13 +286,13 @@ export function ChartCards() {
         </CardContent>
       </Card>
 
-      {/* Assets & Detection Types - Composed Chart */}
+      {/* Assets per Brand - Stacked Bar Chart */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Assets & Detection Types</CardTitle>
-              <CardDescription>Assets per brand and detection breakdown</CardDescription>
+              <CardTitle>Assets per Brand</CardTitle>
+              <CardDescription>Assets grouped by brand</CardDescription>
             </div>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </div>
@@ -325,93 +302,37 @@ export function ChartCards() {
             <div className="flex items-center justify-center h-[300px]">
               <Spinner className="h-6 w-6" />
             </div>
-          ) : assetsPerBrandData.length === 0 && detectionTypesData.length === 0 ? (
+          ) : assetsPerBrandData.length === 0 ? (
             <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-              <p className="text-sm">No data available</p>
+              <p className="text-sm">No asset data available</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Assets per Brand - Stacked Bar Chart */}
-              {assetsPerBrandData.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium mb-3 text-muted-foreground">Assets per Brand</p>
-                  <ChartContainer config={stackedBarChartConfig} className="w-full h-[200px] aspect-auto">
-                    <BarChart data={assetsPerBrandData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis
-                        dataKey="brand"
-                        tick={{ fontSize: 11 }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                      />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <ChartLegend content={<ChartLegendContent />} />
-                      {Object.keys(assetsPerBrandData[0] || {})
-                        .filter((key) => key !== "brand")
-                        .map((assetName, index) => (
-                          <Bar
-                            key={assetName}
-                            dataKey={assetName}
-                            stackId="a"
-                            fill={COLORS[index % COLORS.length]}
-                            radius={index === 0 ? [4, 4, 0, 0] : undefined}
-                          />
-                        ))}
-                    </BarChart>
-                  </ChartContainer>
-                </div>
-              )}
-              
-              {/* Detection Types - Pie Chart */}
-              {detectionTypesData.length > 0 && (
-                <div className="pt-4 border-t">
-                  <p className="text-xs font-medium mb-3 text-muted-foreground">Detection Types</p>
-                  <div className="flex items-center gap-6">
-                    <ChartContainer config={pieChartConfig} className="w-full h-[120px] aspect-auto">
-                      <PieChart>
-                        <Pie
-                          data={detectionTypesData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={30}
-                          outerRadius={50}
-                          paddingAngle={2}
-                        >
-                          {detectionTypesData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={entry.name === "Video" ? "#3B82F6" : "#10B981"}
-                            />
-                          ))}
-                        </Pie>
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                      </PieChart>
-                    </ChartContainer>
-                    <div className="flex flex-col gap-2 text-xs">
-                      {detectionTypesData.map((item) => (
-                        <div key={item.name} className="flex items-center gap-2">
-                          <div
-                            className="h-3 w-3 rounded-full"
-                            style={{
-                              backgroundColor:
-                                item.name === "Video" ? "#3B82F6" : "#10B981",
-                            }}
-                          />
-                          <span className="font-medium">{item.name}</span>
-                          <span className="text-muted-foreground">
-                            {item.value.toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ChartContainer config={stackedBarChartConfig} className="w-full h-[300px] aspect-auto">
+              <BarChart data={assetsPerBrandData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="brand"
+                  tick={{ fontSize: 11 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartLegend content={<ChartLegendContent />} />
+                {Object.keys(assetsPerBrandData[0] || {})
+                  .filter((key) => key !== "brand")
+                  .map((assetName, index) => (
+                    <Bar
+                      key={assetName}
+                      dataKey={assetName}
+                      stackId="a"
+                      fill={COLORS[index % COLORS.length]}
+                      radius={index === 0 ? [4, 4, 0, 0] : undefined}
+                    />
+                  ))}
+              </BarChart>
+            </ChartContainer>
           )}
         </CardContent>
       </Card>
