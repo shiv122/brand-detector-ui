@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { useVideoDetection } from "@/hooks/use-video-detection";
-import { useWeights, useSwitchWeight } from "@/hooks/use-api";
+import { useWeights, useSwitchWeight, useClassificationWeights, useSwitchClassificationWeight } from "@/hooks/use-api";
 import { VideoResults } from "./_components/video-results";
 import { Play, Square, RefreshCw, Settings, Video, Upload, Link as LinkIcon, Cpu, Gauge, Target, X } from "lucide-react";
 import { APP_CONFIG } from "@/config/app-config";
@@ -50,8 +50,15 @@ export default function VideoDetectionPage() {
   const [selectedWeight, setSelectedWeight] = useState("");
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
 
+  const { data: classificationWeightsData, isLoading: classificationWeightsLoading } = useClassificationWeights();
+  const switchClassificationWeightMutation = useSwitchClassificationWeight();
+  const [selectedClassificationWeight, setSelectedClassificationWeight] = useState("");
+
   const availableWeights = weightsData?.data?.available_weights || [];
   const currentWeight = weightsData?.data?.current_weight || "";
+
+  const availableClassificationWeights = classificationWeightsData?.data?.available_weights || [];
+  const currentClassificationWeight = classificationWeightsData?.data?.current_weight || "";
 
   useEffect(() => {
     if (currentWeight && !selectedWeight) {
@@ -59,9 +66,20 @@ export default function VideoDetectionPage() {
     }
   }, [currentWeight, selectedWeight]);
 
+  useEffect(() => {
+    if (currentClassificationWeight && !selectedClassificationWeight) {
+      setSelectedClassificationWeight(currentClassificationWeight);
+    }
+  }, [currentClassificationWeight, selectedClassificationWeight]);
+
   const handleWeightChange = (weightName: string) => {
     setSelectedWeight(weightName);
     switchWeightMutation.mutate(weightName);
+  };
+
+  const handleClassificationWeightChange = (weightName: string) => {
+    setSelectedClassificationWeight(weightName);
+    switchClassificationWeightMutation.mutate(weightName);
   };
 
   const progressPercentage =
@@ -181,14 +199,52 @@ export default function VideoDetectionPage() {
                   </div>
 
                   {/* Classification Toggle */}
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm font-medium">Enable Classification</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Use classification model to categorize detected logos
-                      </p>
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-medium">Enable Classification</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Use classification model to categorize detected logos
+                        </p>
+                      </div>
+                      <Switch checked={enableClassification} onCheckedChange={setEnableClassification} />
                     </div>
-                    <Switch checked={enableClassification} onCheckedChange={setEnableClassification} />
+
+                    {/* Classification Model Selection - Only show when enabled */}
+                    {enableClassification && (
+                      <div className="space-y-2">
+                        <Label htmlFor="classification-model-select" className="text-sm font-medium">
+                          Classification Model
+                        </Label>
+                        <Select
+                          value={selectedClassificationWeight || currentClassificationWeight}
+                          onValueChange={handleClassificationWeightChange}
+                          disabled={classificationWeightsLoading || availableClassificationWeights.length === 0}
+                        >
+                          <SelectTrigger id="classification-model-select" className="w-full">
+                            <div className="flex items-center gap-2">
+                              <Cpu className="h-4 w-4 text-muted-foreground" />
+                              <SelectValue
+                                placeholder={
+                                  classificationWeightsLoading
+                                    ? "Loading models..."
+                                    : availableClassificationWeights.length === 0
+                                      ? "No classification models available"
+                                      : "Select a classification model"
+                                }
+                              />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableClassificationWeights.map((weight) => (
+                              <SelectItem key={weight.name} value={weight.name}>
+                                {weight.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </div>
               </DialogContent>
@@ -239,8 +295,10 @@ export default function VideoDetectionPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground">Classification</p>
-                <p className="text-sm font-medium">
-                  {enableClassification ? "Enabled" : "Disabled"}
+                <p className="text-sm font-medium truncate">
+                  {enableClassification 
+                    ? (selectedClassificationWeight || currentClassificationWeight || "Not selected")
+                    : "Disabled"}
                 </p>
               </div>
             </div>
