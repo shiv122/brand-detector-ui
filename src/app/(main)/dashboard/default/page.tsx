@@ -3,7 +3,7 @@
 import { OverviewCards } from "./_components/overview-cards";
 import { InsightCards } from "./_components/insight-cards";
 import { OperationalCards } from "./_components/operational-cards";
-import { TableCards } from "./_components/table-cards";
+import { ChartCards } from "./_components/chart-cards";
 
 export default function DefaultDashboardPage() {
   return (
@@ -11,7 +11,7 @@ export default function DefaultDashboardPage() {
       <OverviewCards />
       <InsightCards />
       <OperationalCards />
-      <TableCards />
+      <ChartCards />
     </div>
   );
 }

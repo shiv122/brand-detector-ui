@@ -125,6 +125,52 @@ export interface ClassificationResponse {
   results: ClassificationResult[];
 }
 
+export interface DashboardStats {
+  overview: {
+    total_detections: number;
+    images_processed: number;
+    videos_processed: number;
+    total_sessions: number;
+    total_assets: number;
+  };
+  top_brands: Array<{
+    name: string;
+    detections: number;
+    percentage: number;
+  }>;
+  top_assets: Array<{
+    name: string;
+    count: number;
+  }>;
+  assets_per_brand: Record<string, Array<{
+    asset_name: string;
+    count: number;
+  }>>;
+  detection_types: {
+    video: number;
+    image: number;
+  };
+  recent_activity: Array<{
+    id: number;
+    session_id: string;
+    type: "video" | "image";
+    name: string;
+    detections: number;
+    status: string;
+    created_at: string;
+  }>;
+  processing_queue: Array<{
+    session_id: string;
+    name: string;
+    progress: number;
+    status: string;
+  }>;
+  brand_distribution: Array<{
+    date: string;
+    [brandName: string]: string | number;
+  }>;
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -333,6 +379,10 @@ class ApiClient {
   // Session Management
   async getSessionSummary(sessionId: string) {
     return this.request<SessionSummary>(`/session/${sessionId}/summary`);
+  }
+
+  async getDashboardStats() {
+    return this.request<DashboardStats>("/dashboard/stats");
   }
 
   async getRealtimeCSVFiles(sessionId: string) {

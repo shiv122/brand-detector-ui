@@ -1,27 +1,96 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Zap, Clock, BarChart3 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { TrendingUp, BarChart3 } from "lucide-react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import type { ChartConfig } from "@/components/ui/chart";
+import { PieChart, Pie, Cell } from "recharts";
 
-const topBrands = [
-  { name: "Nike", detections: 234, change: "+12.5%", percentage: 18.7 },
-  { name: "Adidas", detections: 189, change: "+8.2%", percentage: 15.1 },
-  { name: "Coca-Cola", detections: 156, change: "+5.3%", percentage: 12.5 },
-  { name: "Apple", detections: 142, change: "+15.8%", percentage: 11.4 },
-  { name: "Samsung", detections: 98, change: "+3.1%", percentage: 7.8 },
-];
-
-const modelStats = [
-  { model: "YOLOv8n", accuracy: 92, speed: 45, usage: 65, color: "bg-blue-500" },
-  { model: "YOLOv8s", accuracy: 94, speed: 32, usage: 25, color: "bg-green-500" },
-  { model: "YOLOv8m", accuracy: 96, speed: 18, usage: 10, color: "bg-purple-500" },
+const COLORS = [
+  "#8B5CF6", // Purple
+  "#F97316", // Orange
+  "#10B981", // Green
+  "#3B82F6", // Blue
+  "#EC4899", // Pink
+  "#FACC15", // Yellow
+  "#06B6D4", // Cyan
+  "#EF4444", // Red
 ];
 
 export function InsightCards() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: async () => {
+      const response = await apiClient.getDashboardStats();
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to fetch dashboard stats");
+      }
+      return response.data;
+    },
+    refetchInterval: 30000,
+  });
+
+  const topBrands = useMemo(() => {
+    if (!data?.top_brands) return [];
+    return data.top_brands.slice(0, 5);
+  }, [data]);
+
+  const pieChartData = useMemo(() => {
+    if (!topBrands.length) return [];
+    return topBrands.map((brand) => ({
+      name: brand.name,
+      value: brand.detections,
+    }));
+  }, [topBrands]);
+
+  const pieChartConfig: ChartConfig = useMemo(() => {
+    const config: ChartConfig = {};
+    topBrands.forEach((brand, index) => {
+      const color = COLORS[index % COLORS.length];
+      config[brand.name] = {
+        label: brand.name,
+        color: color,
+      };
+    });
+    return config;
+  }, [topBrands]);
+
+  const totalDetections = useMemo(() => {
+    return topBrands.reduce((sum, brand) => sum + brand.detections, 0);
+  }, [topBrands]);
+
+  if (error) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Top Detected Brands</CardTitle>
+            <CardDescription>Failed to load data</CardDescription>
+          </CardHeader>
+        </Card>
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Brand Distribution</CardTitle>
+            <CardDescription>Failed to load data</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
       <Card className="col-span-4">
@@ -29,7 +98,7 @@ export function InsightCards() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Top Detected Brands</CardTitle>
-              <CardDescription>Most frequently detected logos this month</CardDescription>
+              <CardDescription>Most frequently detected logos</CardDescription>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link href="/dashboard/images">View All</Link>
@@ -37,33 +106,51 @@ export function InsightCards() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {topBrands.map((brand, index) => (
-              <div key={brand.name} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{brand.name}</p>
-                      <p className="text-xs text-muted-foreground">{brand.detections} detections</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      {brand.change}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground w-12 text-right">
-                      {brand.percentage}%
-                    </span>
-                  </div>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
                 </div>
-                <Progress value={brand.percentage} className="h-2" />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : topBrands.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">No brand data available</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {topBrands.map((brand, index) => {
+                const percentage = totalDetections > 0 
+                  ? (brand.detections / totalDetections) * 100 
+                  : 0;
+                
+                return (
+                  <div key={brand.name} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{brand.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {brand.detections.toLocaleString()} detections
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-12 text-right">
+                          {percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <Progress value={percentage} className="h-2" />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -71,43 +158,54 @@ export function InsightCards() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Model Performance</CardTitle>
-              <CardDescription>Current model usage statistics</CardDescription>
+              <CardTitle>Brand Distribution</CardTitle>
+              <CardDescription>Top brands by detection count</CardDescription>
             </div>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {modelStats.map((model) => (
-              <div key={model.model} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{model.model}</span>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {model.usage}%
-                  </Badge>
-                </div>
-                <Progress value={model.usage} className="h-2" />
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{model.accuracy}% accuracy</span>
-                  <span>{model.speed} FPS</span>
-                </div>
-              </div>
-            ))}
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Avg Processing</span>
-                </div>
-                <span className="text-sm font-bold">12.5ms</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">per frame</p>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-[220px]">
+              <Spinner className="h-6 w-6" />
             </div>
-          </div>
+          ) : pieChartData.length === 0 ? (
+            <div className="flex items-center justify-center h-[220px] text-muted-foreground">
+              <p className="text-sm">No data available</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <ChartContainer config={pieChartConfig} className="w-full h-[220px] aspect-auto">
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    strokeWidth={2}
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                {topBrands.map((brand, index) => (
+                  <div key={brand.name} className="flex items-center gap-1.5">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="font-medium">{brand.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
